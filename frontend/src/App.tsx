@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import ProcessResumes from "./pages/ProcessResumes";
 import Candidates from "./pages/Candidates";
@@ -21,12 +22,22 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Redirect logged-in users away from landing/login to dashboard
+function RedirectIfAuth({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      {/* Public */}
+      <Route path="/" element={<RedirectIfAuth><Landing /></RedirectIfAuth>} />
+      <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
 
-      <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
+      {/* Protected */}
+      <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
       <Route path="/process-resumes" element={<RequireAuth><ProcessResumes /></RequireAuth>} />
       <Route path="/pipeline" element={<RequireAuth><Pipeline /></RequireAuth>} />
       <Route
@@ -43,8 +54,10 @@ function AppRoutes() {
       />
       <Route
         path="/interviews"
-        element={<RequireAuth><Layout><Interviews /></Layout></RequireAuth>}
+        element={<RequireAuth><Interviews /></RequireAuth>}
       />
+
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

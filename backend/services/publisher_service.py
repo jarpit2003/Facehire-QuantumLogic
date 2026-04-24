@@ -196,16 +196,35 @@ async def create_google_form(job_id: str, title: str, description: str) -> Publi
 
 def _create_form_sync(job_id: str, title: str, description: str) -> PublishResult:
     """Synchronous Google Forms creation — runs in executor."""
-    from google.oauth2 import service_account
+    import pickle
+    import os
+    from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
 
-    creds = service_account.Credentials.from_service_account_file(
-        settings.GOOGLE_CREDENTIALS_PATH,
-        scopes=[
-            "https://www.googleapis.com/auth/forms.body",
-            "https://www.googleapis.com/auth/drive",
-        ],
-    )
+    SCOPES = [
+        "https://www.googleapis.com/auth/forms.body",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    TOKEN_PATH = os.path.join(os.path.dirname(settings.GOOGLE_CREDENTIALS_PATH), "token.pkl")
+
+    if not os.path.exists(TOKEN_PATH):
+        return PublishResult(
+            platform="google_form",
+            success=False,
+            url=None,
+            message=(
+                "OAuth2 token not found. Run `python generate_token.py` once to authenticate "
+                "and generate token.pkl, then retry."
+            ),
+        )
+
+    with open(TOKEN_PATH, "rb") as f:
+        creds = pickle.load(f)
+
+    if creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+        with open(TOKEN_PATH, "wb") as f:
+            pickle.dump(creds, f)
 
     forms_service = build("forms", "v1", credentials=creds)
 

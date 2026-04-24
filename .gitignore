@@ -6,6 +6,8 @@ venv312/
 *.egg-info/
 .env
 credentials.json
+oauth_credentials.json
+token.pkl
 *.db
 *.log
 
