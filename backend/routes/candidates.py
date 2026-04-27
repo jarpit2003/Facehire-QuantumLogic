@@ -36,6 +36,13 @@ async def create_candidate(
     db: AsyncSession = Depends(get_db),
     _: HRUser = Depends(get_current_user),
 ):
+    # Return existing candidate if email already exists
+    existing = await candidate_service.get_by_email(db, str(body.email))
+    if existing:
+        if body.resume_text:
+            existing = await candidate_service.update_resume(db, existing, body.resume_text, body.phone)
+        return existing
+
     candidate = await candidate_service.create(
         db, body.full_name, body.email, body.resume_text, body.phone
     )
