@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.session import get_db
@@ -65,7 +65,7 @@ class StageIn(BaseModel):
 
 
 class TestScoreIn(BaseModel):
-    test_score: float
+    test_score: float = Field(..., ge=0.0, le=100.0, description="Test score between 0 and 100")
 
 
 class SendTestLinkIn(BaseModel):

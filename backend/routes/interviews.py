@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
 from db.session import get_db
 from db.models import Interview, Candidate, Job, HRUser
 from services import interview_service, application_service
@@ -43,12 +44,14 @@ class InterviewOut(BaseModel):
     application_id: uuid.UUID | None
     round_number: int
     interviewer_id: uuid.UUID | None
+    interviewer_name: str | None
     status: str
     scheduled_at: datetime | None
     meet_link: str | None
     notes: str | None
     score: float | None
     feedback: str | None
+    candidate_name: str | None
 
     model_config = {"from_attributes": True}
 
@@ -60,6 +63,35 @@ class ScoreIn(BaseModel):
 
 class StatusIn(BaseModel):
     status: str
+
+
+class HRUserOut(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    email: str
+    role: str
+
+    model_config = {"from_attributes": True}
+
+
+async def _enrich(db: AsyncSession, interview: Interview) -> InterviewOut:
+    candidate: Candidate | None = await db.get(Candidate, interview.candidate_id)
+    interviewer: HRUser | None = (
+        await db.get(HRUser, interview.interviewer_id) if interview.interviewer_id else None
+    )
+    data = {c.key: getattr(interview, c.key) for c in interview.__table__.columns}
+    data["candidate_name"] = candidate.full_name if candidate else None
+    data["interviewer_name"] = interviewer.full_name if interviewer else None
+    return InterviewOut(**data)
+
+
+@router.get("/hr-users", response_model=list[HRUserOut])
+async def list_hr_users(
+    db: AsyncSession = Depends(get_db),
+    _: HRUser = Depends(get_current_user),
+):
+    result = await db.execute(select(HRUser).where(HRUser.is_active == True).order_by(HRUser.full_name))
+    return result.scalars().all()
 
 
 @router.post("/", response_model=InterviewOut, status_code=201)
@@ -112,7 +144,7 @@ async def create_interview(
                     notes=body.notes,
                 )
 
-    return interview
+    return await _enrich(db, interview)
 
 
 @router.get("/", response_model=list[InterviewOut])
@@ -121,9 +153,8 @@ async def list_interviews(
     db: AsyncSession = Depends(get_db),
     _: HRUser = Depends(get_current_user),
 ):
-    if job_id:
-        return await interview_service.list_by_job(db, job_id)
-    return await interview_service.list_all(db)
+    interviews = await (interview_service.list_by_job(db, job_id) if job_id else interview_service.list_all(db))
+    return [await _enrich(db, iv) for iv in interviews]
 
 
 @router.patch("/{interview_id}/score", response_model=InterviewOut)
@@ -151,7 +182,7 @@ async def submit_score(
                 db, app, body.score, interview.round_number
             )
 
-    return interview
+    return await _enrich(db, interview)
 
 
 @router.patch("/{interview_id}/status", response_model=InterviewOut)
@@ -167,4 +198,4 @@ async def update_status(
     interview.status = body.status
     await db.commit()
     await db.refresh(interview)
-    return interview
+    return await _enrich(db, interview)

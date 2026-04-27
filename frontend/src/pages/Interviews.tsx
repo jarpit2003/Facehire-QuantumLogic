@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Calendar, ArrowRight, UserCircle, CheckCircle2,
-  Loader2, RefreshCw, Star, GitBranch,
+  Loader2, RefreshCw, Star, GitBranch, User,
 } from "lucide-react";
-import { interviewService, candidateService, type InterviewRecord, type CandidateRecord } from "../services/api";
+import { interviewService, type InterviewRecord } from "../services/api";
 import { useJobs } from "../context/JobContext";
 import { getApiErrorMessage } from "../utils/apiError";
 import Layout from "../components/Layout";
@@ -91,7 +91,6 @@ function ScoreModal({
 export default function Interviews() {
   const { activeJob } = useJobs();
   const [interviews, setInterviews] = useState<InterviewRecord[]>([]);
-  const [candidates, setCandidates] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scoreModal, setScoreModal] = useState<InterviewRecord | null>(null);
@@ -101,14 +100,8 @@ export default function Interviews() {
     setLoading(true);
     setError(null);
     try {
-      const [{ data: ivs }, { data: cands }] = await Promise.all([
-        interviewService.list(activeJob.id),
-        candidateService.list(),
-      ]);
+      const { data: ivs } = await interviewService.list(activeJob.id);
       setInterviews(ivs);
-      const nameMap: Record<string, string> = {};
-      cands.forEach((c: CandidateRecord) => { nameMap[c.id] = c.full_name; });
-      setCandidates(nameMap);
     } catch (e) {
       setError(getApiErrorMessage(e, "Failed to load interviews"));
     } finally {
@@ -184,7 +177,7 @@ export default function Interviews() {
                 </div>
                 <ul className="divide-y divide-gray-100">
                   {scheduled.map((iv) => (
-                    <InterviewRow key={iv.id} iv={iv} candidateName={candidates[iv.candidate_id] ?? ""} onScore={() => setScoreModal(iv)} />
+                    <InterviewRow key={iv.id} iv={iv} onScore={() => setScoreModal(iv)} />
                   ))}
                 </ul>
               </div>
@@ -200,7 +193,7 @@ export default function Interviews() {
                 </div>
                 <ul className="divide-y divide-gray-100">
                   {completed.map((iv) => (
-                    <InterviewRow key={iv.id} iv={iv} candidateName={candidates[iv.candidate_id] ?? ""} onScore={() => setScoreModal(iv)} />
+                    <InterviewRow key={iv.id} iv={iv} onScore={() => setScoreModal(iv)} />
                   ))}
                 </ul>
               </div>
@@ -220,7 +213,7 @@ export default function Interviews() {
   );
 }
 
-function InterviewRow({ iv, candidateName, onScore }: { iv: InterviewRecord; candidateName: string; onScore: () => void }) {
+function InterviewRow({ iv, onScore }: { iv: InterviewRecord; onScore: () => void }) {
   const date = iv.scheduled_at ? new Date(iv.scheduled_at).toLocaleString() : "—";
   return (
     <li className="px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
@@ -232,7 +225,7 @@ function InterviewRow({ iv, candidateName, onScore }: { iv: InterviewRecord; can
               to={`/candidates/${iv.candidate_id}`}
               className="text-sm font-semibold text-blue-700 hover:underline"
             >
-              {candidateName || "Unknown Candidate"}
+              {iv.candidate_name || "Unknown Candidate"}
             </Link>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${roundBadge(iv.round_number)}`}>
               Round {iv.round_number}
@@ -242,6 +235,11 @@ function InterviewRow({ iv, candidateName, onScore }: { iv: InterviewRecord; can
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-1">{date}</p>
+          {iv.interviewer_name && (
+            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+              <User className="h-3 w-3" /> {iv.interviewer_name}
+            </p>
+          )}
           {iv.meet_link && (
             <a href={iv.meet_link} target="_blank" rel="noopener noreferrer"
               className="text-xs text-blue-600 hover:underline mt-0.5 block truncate max-w-xs">

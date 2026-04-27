@@ -205,7 +205,11 @@ def _create_form_sync(job_id: str, title: str, description: str) -> PublishResul
         "https://www.googleapis.com/auth/forms.body",
         "https://www.googleapis.com/auth/drive",
     ]
-    TOKEN_PATH = os.path.join(os.path.dirname(settings.GOOGLE_CREDENTIALS_PATH), "token.pkl")
+
+    # Always resolve paths relative to this file's directory (backend/)
+    _base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    TOKEN_PATH = os.path.join(_base, "token.pkl")
+    CREDS_PATH = os.path.join(_base, settings.GOOGLE_CREDENTIALS_PATH)
 
     if not os.path.exists(TOKEN_PATH):
         return PublishResult(
@@ -213,8 +217,9 @@ def _create_form_sync(job_id: str, title: str, description: str) -> PublishResul
             success=False,
             url=None,
             message=(
-                "OAuth2 token not found. Run `python generate_token.py` once to authenticate "
-                "and generate token.pkl, then retry."
+                f"OAuth2 token not found at {TOKEN_PATH}. "
+                "Run `python generate_token.py` from the backend/ directory once to authenticate, "
+                "then retry."
             ),
         )
 

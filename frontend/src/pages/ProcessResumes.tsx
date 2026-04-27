@@ -104,7 +104,12 @@ export default function ProcessResumes() {
 
         const profile = upload.profile_summary;
         const displayName = profile.full_name || displayNameFromFilename(upload.filename || file.name);
-        const email = profile.email || `${makeCandidateId(file.name, i)}@fairhire.local`;
+        const email = profile.email || null;
+
+        if (!email) {
+          processed.push({ name: displayName, email: "", fitScore: 0, matchedSkills: [], missingSkills: [], status: "error", error: "No email found in resume — please ask candidate to include their email" });
+          continue;
+        }
 
         setCurrentStep(`Scoring ${displayName} against job description…`);
 

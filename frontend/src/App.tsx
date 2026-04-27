@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import ProcessResumes from "./pages/ProcessResumes";
 import Candidates from "./pages/Candidates";
@@ -8,6 +7,7 @@ import Interviews from "./pages/Interviews";
 import Pipeline from "./pages/Pipeline";
 import CandidateProfile from "./pages/CandidateProfile";
 import Login from "./pages/Login";
+import HRUsers from "./pages/HRUsers";
 import Layout from "./components/Layout";
 import { PipelineProvider } from "./context/PipelineContext";
 import { JobProvider } from "./context/JobContext";
@@ -33,7 +33,7 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/" element={<RedirectIfAuth><Landing /></RedirectIfAuth>} />
+      <Route path="/" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
       <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
 
       {/* Protected */}
@@ -55,6 +55,10 @@ function AppRoutes() {
       <Route
         path="/interviews"
         element={<RequireAuth><Interviews /></RequireAuth>}
+      />
+      <Route
+        path="/hr-users"
+        element={<RequireAuth><HRUsers /></RequireAuth>}
       />
 
       {/* Fallback */}

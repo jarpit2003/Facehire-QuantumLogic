@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { Link } from "react-router-dom";
-import { applicationService, interviewService, type ApplicationRecord } from "../services/api";
+import { applicationService, interviewService, type ApplicationRecord, type HRUserRecord } from "../services/api";
 import { useJobs } from "../context/JobContext";
 import { getApiErrorMessage } from "../utils/apiError";
 
@@ -292,13 +292,15 @@ function ScheduleModal({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hrUsers, setHrUsers] = useState<HRUserRecord[]>([]);
+
+  useEffect(() => {
+    interviewService.listHRUsers()
+      .then(({ data }) => setHrUsers(data))
+      .catch(() => {});
+  }, []);
 
   const handleSchedule = async () => {
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (interviewerId && !UUID_RE.test(interviewerId.trim())) {
-      setError("Interviewer ID must be a valid UUID (e.g. from the HR Users list).");
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
@@ -309,7 +311,7 @@ function ScheduleModal({
         round_number: roundNumber,
         scheduled_at: `${date}T${time}:00`,
         meet_link: meetLink || null,
-        interviewer_id: interviewerId.trim() || null,
+        interviewer_id: interviewerId || null,
         notes: notes || null,
       });
       const targetStage = roundNumber === 1 ? "interview_1" : "interview_2";
@@ -341,10 +343,17 @@ function ScheduleModal({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-1.5">Interviewer ID (optional)</label>
-          <input type="text" value={interviewerId} onChange={(e) => setInterviewerId(e.target.value)}
-            placeholder="Paste interviewer UUID from HR Users"
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <label className="block text-sm font-semibold text-gray-900 mb-1.5">Interviewer (optional)</label>
+          <select
+            value={interviewerId}
+            onChange={(e) => setInterviewerId(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="">— Select interviewer —</option>
+            {hrUsers.map((u) => (
+              <option key={u.id} value={u.id}>{u.full_name} ({u.role})</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-1.5">Meet link (optional)</label>

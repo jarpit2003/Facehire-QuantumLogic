@@ -119,3 +119,14 @@ async def me(user: HRUser = Depends(get_current_user)) -> UserOut:
         full_name=user.full_name,
         role=user.role,
     )
+
+
+@router.get("/users", response_model=list[UserOut])
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    _: HRUser = Depends(get_current_user),
+) -> list[UserOut]:
+    """List all HR users — used by the HR Users page to find interviewer UUIDs."""
+    result = await db.execute(select(HRUser))
+    users = result.scalars().all()
+    return [UserOut(id=str(u.id), email=u.email, full_name=u.full_name, role=u.role) for u in users]

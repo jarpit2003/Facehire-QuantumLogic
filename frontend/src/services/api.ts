@@ -52,6 +52,7 @@ export const interviewService = {
     api.patch<InterviewRecord>(`/interviews/${id}/score`, { score, feedback }),
   updateStatus: (id: string, status: string) =>
     api.patch<InterviewRecord>(`/interviews/${id}/status`, { status }),
+  listHRUsers: () => api.get<HRUserRecord[]>("/interviews/hr-users"),
 };
 
 export const analyticsService = {
@@ -119,12 +120,21 @@ export interface InterviewRecord {
   application_id: string | null;
   round_number: number;
   interviewer_id: string | null;
+  interviewer_name: string | null;
   status: string;
   scheduled_at: string | null;
   meet_link: string | null;
   notes: string | null;
   score: number | null;
   feedback: string | null;
+  candidate_name: string | null;
+}
+
+export interface HRUserRecord {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
 }
 
 // --- Upload ---
