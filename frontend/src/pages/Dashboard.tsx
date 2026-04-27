@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Users, Briefcase, Calendar, TrendingUp, ArrowRight,
   RefreshCw, Loader2, CheckCircle2, Clock, FileStack,
-  Award, Plus, ChevronRight, AlertCircle, Sparkles,
+  Award, Plus, ChevronRight, AlertCircle, Sparkles, Copy,
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { applicationService, interviewService, type ApplicationRecord, type InterviewRecord } from "../services/api";
@@ -96,6 +96,50 @@ function MetricCard({ label, value, sub, icon, color }: { label: string; value: 
         <p className="text-xs font-medium text-gray-500 mt-0.5">{label}</p>
         {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
+    </div>
+  );
+}
+
+function WebhookPanel({ appIds }: { appIds: string[] }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const secret = "fh_wh_s3cr3t_change_me_in_production";
+  const base = window.location.origin;
+
+  const copy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  if (appIds.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <Briefcase className="h-4 w-4 text-blue-600" />
+        <h2 className="text-sm font-bold text-gray-900">Test Platform Webhook URLs</h2>
+        <span className="ml-auto text-xs text-gray-400">Give these to HackerRank / Mettl as the callback URL</span>
+      </div>
+      <div className="space-y-2 max-h-48 overflow-y-auto">
+        {appIds.map((id) => {
+          const url = `${base}/api/v1/applications/webhook/test-score?app_id=${id}&secret=${secret}`;
+          return (
+            <div key={id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
+              <code className="text-xs text-gray-700 flex-1 truncate">{url}</code>
+              <button
+                onClick={() => copy(url, id)}
+                className="flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-200 text-gray-500"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+              {copied === id && <span className="text-xs text-green-600 flex-shrink-0">Copied!</span>}
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+        ⚠️ Change <code>WEBHOOK_SECRET</code> in your <code>.env</code> before going to production.
+      </p>
     </div>
   );
 }
@@ -300,6 +344,9 @@ export default function Dashboard() {
                     </Link>
                   ))}
                 </div>
+
+                {/* Webhook URL info panel */}
+                <WebhookPanel appIds={applications.filter(a => a.stage === "test_sent").map(a => a.id)} />
               </>
             )}
           </>

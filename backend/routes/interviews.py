@@ -150,10 +150,21 @@ async def create_interview(
 @router.get("/", response_model=list[InterviewOut])
 async def list_interviews(
     job_id: Optional[uuid.UUID] = Query(None),
+    candidate_id: Optional[uuid.UUID] = Query(None),
     db: AsyncSession = Depends(get_db),
     _: HRUser = Depends(get_current_user),
 ):
-    interviews = await (interview_service.list_by_job(db, job_id) if job_id else interview_service.list_all(db))
+    if candidate_id:
+        result = await db.execute(
+            select(Interview)
+            .where(Interview.candidate_id == candidate_id)
+            .order_by(Interview.scheduled_at.asc().nullslast())
+        )
+        interviews = list(result.scalars().all())
+    elif job_id:
+        interviews = await interview_service.list_by_job(db, job_id)
+    else:
+        interviews = await interview_service.list_all(db)
     return [await _enrich(db, iv) for iv in interviews]
 
 

@@ -191,10 +191,17 @@ async def advance_stage(
 @router.post("/webhook/test-score", response_model=ApplicationOut)
 async def test_score_webhook(
     body: TestScoreIn,
-    app_id: uuid.UUID = Query(..., description="Application UUID — provided by the test platform callback URL"),
+    app_id: uuid.UUID = Query(..., description="Application UUID"),
+    secret: str = Query(..., description="Webhook secret — must match WEBHOOK_SECRET in .env"),
     db: AsyncSession = Depends(get_db),
 ) -> ApplicationOut:
-    """Public webhook — called by HackerRank/Mettl/any test platform to auto-ingest scores."""
+    """Public webhook — called by HackerRank/Mettl to auto-ingest scores.
+    Requires ?secret= query param matching WEBHOOK_SECRET env var.
+    """
+    import os
+    webhook_secret = os.environ.get("WEBHOOK_SECRET", "")
+    if not webhook_secret or secret != webhook_secret:
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
     app = await application_service.get_by_id(db, app_id)
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")

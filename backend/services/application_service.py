@@ -108,21 +108,33 @@ async def record_interview_score(
 
 def _compute_final(app: Application) -> float:
     """
-    Weighted composite score.
-    Weights are stored on the application so HR can configure per-job.
-    Only includes components that have been scored.
-    interview_weight and hr_interview_weight mirror test_weight proportionally.
+    Weighted composite score using only components that have been scored.
+    Each scored component gets an equal share of the total weight so the
+    formula stays consistent regardless of how many stages are complete.
+
+    Stage weights (when all present):
+      resume       40%
+      test         30%
+      interview_1  20%
+      interview_2  10%
     """
-    scores: list[tuple[float, float]] = []  # (score, weight)
+    _WEIGHTS = {
+        "resume":    40.0,
+        "test":      30.0,
+        "interview": 20.0,
+        "hr":        10.0,
+    }
+
+    scores: list[tuple[float, float]] = []
 
     if app.resume_score is not None:
-        scores.append((app.resume_score, app.resume_weight))
+        scores.append((app.resume_score, _WEIGHTS["resume"]))
     if app.test_score is not None:
-        scores.append((app.test_score, app.test_weight))
+        scores.append((app.test_score, _WEIGHTS["test"]))
     if app.interview_score is not None:
-        scores.append((app.interview_score, app.test_weight))  # same weight as test
+        scores.append((app.interview_score, _WEIGHTS["interview"]))
     if app.hr_interview_score is not None:
-        scores.append((app.hr_interview_score, app.resume_weight // 2))  # half of resume weight
+        scores.append((app.hr_interview_score, _WEIGHTS["hr"]))
 
     if not scores:
         return 0.0

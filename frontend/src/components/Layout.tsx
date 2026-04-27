@@ -2,7 +2,7 @@ import { type ReactNode, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sparkles, Users, Briefcase, Calendar, LayoutDashboard,
-  ChevronDown, Loader2, LogOut, ChevronRight, Menu, X, Shield,
+  ChevronDown, Loader2, LogOut, ChevronRight, Menu, X,
 } from "lucide-react";
 import { useJobs } from "../context/JobContext";
 import { useAuth } from "../context/AuthContext";

@@ -46,7 +46,13 @@ export const applicationService = {
 };
 
 export const interviewService = {
-  list: (jobId?: string) => api.get<InterviewRecord[]>(jobId ? `/interviews/?job_id=${jobId}` : "/interviews/"),
+  list: (jobId?: string, candidateId?: string) => {
+    const params = new URLSearchParams();
+    if (jobId) params.append("job_id", jobId);
+    if (candidateId) params.append("candidate_id", candidateId);
+    const qs = params.toString();
+    return api.get<InterviewRecord[]>(qs ? `/interviews/?${qs}` : "/interviews/");
+  },
   schedule: (data: unknown) => api.post<InterviewRecord>("/interviews/", data),
   submitScore: (id: string, score: number, feedback?: string) =>
     api.patch<InterviewRecord>(`/interviews/${id}/score`, { score, feedback }),

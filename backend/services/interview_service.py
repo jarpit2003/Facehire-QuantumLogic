@@ -1,9 +1,12 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.models import Interview
+from db.models import Interview, Application
+
+
+_STAGE_ORDER = ["applied", "shortlisted", "test_sent", "tested", "interview_1", "interview_2", "offered", "rejected"]
 
 
 async def create(
@@ -30,6 +33,18 @@ async def create(
         notes=notes,
     )
     db.add(interview)
+
+    # Atomically advance application stage so pipeline never desyncs
+    if application_id:
+        app: Application | None = await db.get(Application, application_id)
+        if app:
+            target = "interview_1" if round_number == 1 else "interview_2"
+            current_idx = _STAGE_ORDER.index(app.stage) if app.stage in _STAGE_ORDER else 0
+            target_idx = _STAGE_ORDER.index(target)
+            if target_idx > current_idx:
+                app.stage = target
+                app.updated_at = datetime.now(timezone.utc)
+
     await db.commit()
     await db.refresh(interview)
     return interview

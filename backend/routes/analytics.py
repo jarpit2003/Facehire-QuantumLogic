@@ -1,156 +1,132 @@
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
+"""
+routes/analytics.py
 
-from services.analytics import (
-    AnalyticsSummary,
-    CandidateMatchSummary,
-    compute_analytics_summary,
-    create_candidate_summary,
-)
-from services.jd_matcher import MatchResult, match_candidate_to_jd
-from services.profile_extractor import CandidateProfile
+GET /api/v1/analytics/summary?job_id=  — dashboard analytics for a job
+
+Uses scores already stored in the Application table.
+No Gemini calls — fast, cheap, accurate.
+"""
+from __future__ import annotations
+
+import uuid
+from collections import Counter
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db.session import get_db
+from db.models import HRUser, Application, Candidate, Job
+from services.auth_service import get_current_user
+from services import application_service
 
 router = APIRouter()
 
 
-# ---------------------------------------------------------------------------
-# Request/Response models
-# ---------------------------------------------------------------------------
-
-class CandidateProfileRequest(BaseModel):
-    candidate_id: str
-    skills: list[str]
-    education: list[str]
-    certifications: list[str]
-    experience_years: int | None = None
-
-
-class AnalyticsRequest(BaseModel):
-    job_description: str = Field(..., min_length=10, max_length=50000)
-    candidates: list[CandidateProfileRequest] = Field(..., min_items=1, max_items=100)
-
-
 class ScoreDistribution(BaseModel):
-    excellent: int = Field(..., description="Candidates with 80-100% fit score")
-    good: int = Field(..., description="Candidates with 60-79% fit score")
-    moderate: int = Field(..., description="Candidates with 40-59% fit score")
-    poor: int = Field(..., description="Candidates with 0-39% fit score")
+    excellent: int
+    good: int
+    moderate: int
+    poor: int
 
 
 class AnalyticsResponse(BaseModel):
-    total_candidates: int = Field(..., description="Total number of candidates analyzed")
-    average_fit_score: float = Field(..., ge=0.0, le=100.0, description="Average fit score across all candidates")
-    top_candidate_score: int = Field(..., ge=0, le=100, description="Highest fit score achieved")
-    shortlisted_count: int = Field(..., description="Number of candidates recommended for shortlist")
-    recommended_for_interview_count: int = Field(..., description="Number of candidates recommended for interview")
-    common_missing_skills: list[str] = Field(..., description="Top 5 most commonly missing skills")
-    score_distribution: ScoreDistribution = Field(..., description="Distribution of fit scores for charts")
-    recommendation_breakdown: dict[str, int] = Field(..., description="Breakdown by recommendation category")
-    insights: dict[str, str] = Field(..., description="Key insights for recruiter dashboard")
+    total_candidates: int
+    active_candidates: int
+    average_fit_score: float
+    top_candidate_score: float
+    interview_ready_count: int
+    offered_count: int
+    rejected_count: int
+    score_distribution: ScoreDistribution
+    stage_breakdown: dict[str, int]
+    common_missing_skills: list[str]
+    common_matched_skills: list[str]
+    insights: dict[str, str]
 
 
-# ---------------------------------------------------------------------------
-# Route
-# ---------------------------------------------------------------------------
+@router.get("/summary", response_model=AnalyticsResponse)
+async def analytics_summary(
+    job_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    _: HRUser = Depends(get_current_user),
+) -> AnalyticsResponse:
+    """
+    Returns analytics for a job using scores already stored in DB.
+    No AI calls — instant response.
+    """
+    job: Job | None = await db.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
 
-@router.post(
-    "/summary",
-    response_model=AnalyticsResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Generate recruiter analytics dashboard summary",
-    description=(
-        "Processes multiple candidate profiles against a job description to generate "
-        "comprehensive analytics for recruiter dashboard. Optimized for frontend charts "
-        "and placement demos with ATS enterprise compliance."
-    ),
-)
-async def analytics_summary(request: AnalyticsRequest) -> AnalyticsResponse:
-    try:
-        # Process each candidate against the JD
-        candidate_summaries: list[CandidateMatchSummary] = []
-        
-        for candidate_req in request.candidates:
-            # Convert to CandidateProfile
-            profile = CandidateProfile(
-                skills=tuple(candidate_req.skills),
-                education=tuple(candidate_req.education),
-                certifications=tuple(candidate_req.certifications),
-                experience_years=candidate_req.experience_years,
-            )
-            
-            # Perform matching
-            match_result = await match_candidate_to_jd(profile, request.job_description)
-            
-            # Create candidate summary
-            candidate_summary = create_candidate_summary(
-                candidate_id=candidate_req.candidate_id,
-                match_result=match_result,
-            )
-            candidate_summaries.append(candidate_summary)
-        
-        # Compute analytics summary
-        analytics = compute_analytics_summary(candidate_summaries)
-        
-        # Generate insights
-        insights = _generate_insights(analytics)
-        
+    apps = await application_service.list_by_job(db, job_id)
+
+    if not apps:
         return AnalyticsResponse(
-            total_candidates=analytics.total_candidates,
-            average_fit_score=analytics.average_fit_score,
-            top_candidate_score=analytics.top_candidate_score,
-            shortlisted_count=analytics.shortlisted_count,
-            recommended_for_interview_count=analytics.recommended_for_interview_count,
-            common_missing_skills=list(analytics.common_missing_skills),
-            score_distribution=ScoreDistribution(**analytics.score_distribution),
-            recommendation_breakdown=analytics.recommendation_breakdown,
-            insights=insights,
-        )
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Analytics computation failed: {str(e)}",
+            total_candidates=0, active_candidates=0,
+            average_fit_score=0.0, top_candidate_score=0.0,
+            interview_ready_count=0, offered_count=0, rejected_count=0,
+            score_distribution=ScoreDistribution(excellent=0, good=0, moderate=0, poor=0),
+            stage_breakdown={}, common_missing_skills=[], common_matched_skills=[],
+            insights={"status": "No candidates yet for this job."},
         )
 
+    active = [a for a in apps if a.stage != "rejected"]
+    scores = [a.final_score or a.resume_score or 0.0 for a in active]
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+    avg_score = round(sum(scores) / len(scores), 1) if scores else 0.0
+    top_score = max(scores) if scores else 0.0
 
-def _generate_insights(analytics: AnalyticsSummary) -> dict[str, str]:
-    """Generate key insights for recruiter dashboard."""
-    insights = {}
-    
-    # Quality assessment
-    if analytics.average_fit_score >= 70:
-        insights["quality"] = "Strong candidate pool with high average fit score"
-    elif analytics.average_fit_score >= 50:
-        insights["quality"] = "Moderate candidate pool with room for improvement"
+    dist = ScoreDistribution(
+        excellent=sum(1 for s in scores if s >= 80),
+        good=sum(1 for s in scores if 60 <= s < 80),
+        moderate=sum(1 for s in scores if 40 <= s < 60),
+        poor=sum(1 for s in scores if s < 40),
+    )
+
+    stage_breakdown = dict(Counter(a.stage for a in apps))
+
+    all_missing = [s for a in apps for s in (a.missing_skills or [])]
+    all_matched = [s for a in apps for s in (a.matched_skills or [])]
+    top_missing = [s for s, _ in Counter(all_missing).most_common(5)]
+    top_matched = [s for s, _ in Counter(all_matched).most_common(5)]
+
+    interview_ready = sum(1 for s in scores if s >= 70)
+    offered = sum(1 for a in apps if a.stage == "offered")
+    rejected = sum(1 for a in apps if a.stage == "rejected")
+
+    insights: dict[str, str] = {}
+
+    if avg_score >= 70:
+        insights["quality"] = "Strong talent pool — high average fit score"
+    elif avg_score >= 50:
+        insights["quality"] = "Moderate talent pool — consider expanding sourcing"
     else:
-        insights["quality"] = "Candidate pool may need expansion or requirement adjustment"
-    
-    # Interview readiness
-    interview_rate = (analytics.recommended_for_interview_count / analytics.total_candidates) * 100
-    if interview_rate >= 30:
-        insights["readiness"] = f"Excellent: {interview_rate:.0f}% of candidates ready for interviews"
-    elif interview_rate >= 15:
-        insights["readiness"] = f"Good: {interview_rate:.0f}% of candidates ready for interviews"
+        insights["quality"] = "Weak talent pool — review JD requirements or source more candidates"
+
+    interview_rate = (interview_ready / len(active) * 100) if active else 0
+    insights["readiness"] = f"{interview_rate:.0f}% of active candidates are interview-ready (score ≥ 70%)"
+
+    if top_missing:
+        insights["skill_gaps"] = f"Most common missing skill: {top_missing[0]}"
+
+    if offered > 0:
+        insights["pipeline"] = f"{offered} offer(s) sent — pipeline nearing completion"
+    elif interview_ready >= 3:
+        insights["pipeline"] = "Enough interview-ready candidates — proceed with scheduling"
     else:
-        insights["readiness"] = f"Limited: Only {interview_rate:.0f}% ready for interviews"
-    
-    # Skill gaps
-    if analytics.common_missing_skills:
-        top_gap = analytics.common_missing_skills[0]
-        insights["skill_gaps"] = f"Most common skill gap: {top_gap} - consider training programs"
-    else:
-        insights["skill_gaps"] = "No significant skill gaps identified"
-    
-    # Recommendation
-    if analytics.recommended_for_interview_count >= 3:
-        insights["recommendation"] = "Proceed with interviews for top candidates"
-    elif analytics.shortlisted_count >= 5:
-        insights["recommendation"] = "Consider expanding search or adjusting requirements"
-    else:
-        insights["recommendation"] = "Recommend sourcing additional candidates"
-    
-    return insights
+        insights["pipeline"] = "Consider shortlisting more candidates before scheduling interviews"
+
+    return AnalyticsResponse(
+        total_candidates=len(apps),
+        active_candidates=len(active),
+        average_fit_score=avg_score,
+        top_candidate_score=top_score,
+        interview_ready_count=interview_ready,
+        offered_count=offered,
+        rejected_count=rejected,
+        score_distribution=dist,
+        stage_breakdown=stage_breakdown,
+        common_missing_skills=top_missing,
+        common_matched_skills=top_matched,
+        insights=insights,
+    )
