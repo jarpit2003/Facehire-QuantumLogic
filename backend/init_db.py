@@ -15,7 +15,9 @@ async def main():
         lines.append(f"SUCCESS - tables created: {tables}")
         await engine.dispose()
     except Exception as e:
+        import traceback
         lines.append(f"ERROR: {e}")
+        lines.append(traceback.format_exc())
 
     result = "\n".join(lines)
     print(result)

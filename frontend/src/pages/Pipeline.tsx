@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Users, Loader2, UserCircle, Send, Calendar,
   XCircle, Award, RefreshCw, CheckCircle2, ArrowRight,
@@ -457,6 +457,11 @@ export default function Pipeline() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [scoreFilter, setScoreFilter] = useState(0);
+  const [visibleStages, setVisibleStages] = useState<Set<Stage>>(
+    () => new Set(STAGES.filter((stage) => stage.key !== "rejected").map((stage) => stage.key))
+  );
 
   const [testModal, setTestModal] = useState<ApplicationRecord | null>(null);
   const [testScoreModal, setTestScoreModal] = useState<ApplicationRecord | null>(null);
@@ -467,6 +472,46 @@ export default function Pipeline() {
 
   const isRealDbRecord = (app: ApplicationRecord) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(app.id);
+
+  const toggleStageVisibility = (stage: Stage) =>
+    setVisibleStages((prev) => {
+      const next = new Set(prev);
+      if (next.has(stage)) next.delete(stage);
+      else next.add(stage);
+      return next;
+    });
+
+  const filteredApplications = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return applications.filter((app) => {
+      if (!visibleStages.has(app.stage as Stage)) return false;
+      const scoreValue = app.final_score ?? app.resume_score ?? 0;
+      if (scoreValue < scoreFilter) return false;
+      const searchable = `${app.candidate_name} ${app.candidate_email}`.toLowerCase();
+      if (query && !searchable.includes(query)) return false;
+      return true;
+    });
+  }, [applications, searchQuery, scoreFilter, visibleStages]);
+
+  const pipelineStats = useMemo(() => {
+    const total = applications.length;
+    const shortlisted = applications.filter((app) => app.stage === "shortlisted").length;
+    const assessed = applications.filter((app) => app.stage === "test_sent" || app.stage === "tested").length;
+    const interviewed = applications.filter((app) => app.stage === "interview_1" || app.stage === "interview_2").length;
+    const offered = applications.filter((app) => app.stage === "offered").length;
+    const percent = (value: number) => (total ? Math.round((value / total) * 100) : 0);
+    return {
+      total,
+      shortlisted,
+      assessed,
+      interviewed,
+      offered,
+      shortlistRate: percent(shortlisted),
+      assessedRate: percent(assessed),
+      interviewRate: percent(interviewed),
+      offerRate: percent(offered),
+    };
+  }, [applications]);
 
   const load = useCallback(async () => {
     if (!activeJob) return;
@@ -557,9 +602,13 @@ export default function Pipeline() {
   };
 
   const byStage = (stage: Stage) =>
-    applications
+    filteredApplications
       .filter((a) => a.stage === stage)
-      .sort((a, b) => (b.final_score ?? b.resume_score ?? 0) - (a.final_score ?? a.resume_score ?? 0));
+      .sort(
+        (a, b) =>
+          (b.final_score ?? b.resume_score ?? 0) -
+          (a.final_score ?? a.resume_score ?? 0)
+      );
 
   if (!activeJob) {
     return (
@@ -588,6 +637,92 @@ export default function Pipeline() {
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Applicants</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">{pipelineStats.total}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Shortlisted</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">{pipelineStats.shortlisted}</p>
+              <p className="text-xs text-slate-500 mt-2">{pipelineStats.shortlistRate}% of total</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Assessed</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">{pipelineStats.assessed}</p>
+              <p className="text-xs text-slate-500 mt-2">{pipelineStats.assessedRate}% of total</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Interviewed</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">{pipelineStats.interviewed}</p>
+              <p className="text-xs text-slate-500 mt-2">{pipelineStats.interviewRate}% of total</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Offered</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">{pipelineStats.offered}</p>
+              <p className="text-xs text-slate-500 mt-2">{pipelineStats.offerRate}% of total</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-400">Board filters</p>
+                <p className="mt-1 text-sm text-slate-500">Showing {filteredApplications.length} of {applications.length}</p>
+              </div>
+              <span className="text-xs text-slate-500">{visibleStages.size} stage{visibleStages.size === 1 ? "" : "s"} visible</span>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              <label className="block">
+                <span className="text-xs font-semibold text-slate-500">Search candidates</span>
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search name or email"
+                  className="mt-2 w-full rounded-2xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+
+              <label className="block">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-slate-500">Minimum score</span>
+                  <span className="text-sm font-semibold text-slate-700">{scoreFilter}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={scoreFilter}
+                  onChange={(e) => setScoreFilter(Number(e.target.value))}
+                  className="mt-2 w-full"
+                />
+              </label>
+
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-2">Visible stages</p>
+                <div className="flex flex-wrap gap-2">
+                  {STAGES.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => toggleStageVisibility(key)}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                        visibleStages.has(key)
+                          ? "border-blue-600 bg-blue-600 text-white"
+                          : "border-slate-200 bg-white text-slate-600"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -629,35 +764,45 @@ export default function Pipeline() {
           </div>
         ) : (
           /* Kanban board — sorted by score desc within each column */
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 items-start">
-            {STAGES.map(({ key, label, color, bg }) => {
-              const cards = byStage(key);
-              return (
-                <div key={key} className={`rounded-2xl border border-gray-200 border-t-4 ${color} ${bg} overflow-hidden`}>
-                  <div className="px-3 py-3 flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{label}</span>
-                    <span className="text-xs font-bold text-gray-500 bg-white border border-gray-200 px-2 py-0.5 rounded-full">
-                      {cards.length}
-                    </span>
-                  </div>
-                  <div className="px-2 pb-3 space-y-2 min-h-[120px]">
-                    {cards.length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-6">Empty</p>
-                    ) : (
-                      cards.map((app) => (
-                        <CandidateCard
-                          key={app.id}
-                          app={app}
-                          selected={selected.has(app.id)}
-                          onSelect={toggleSelect}
-                          onAction={handleAction}
-                        />
-                      ))
-                    )}
-                  </div>
+          <div>
+            {visibleStages.size === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-sm text-slate-500">
+                No stages selected. Use the stage filter above to show columns.
+              </div>
+            ) : (
+              <div className="overflow-x-auto pb-2">
+                <div className="grid grid-flow-col auto-cols-[minmax(280px,1fr)] gap-4 items-start">
+                  {STAGES.filter(({ key }) => visibleStages.has(key)).map(({ key, label, color, bg }) => {
+                    const cards = byStage(key);
+                    return (
+                      <div key={key} className={`rounded-2xl border border-gray-200 border-t-4 ${color} ${bg} overflow-hidden`}>
+                        <div className="px-3 py-3 flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{label}</span>
+                          <span className="text-xs font-bold text-gray-500 bg-white border border-gray-200 px-2 py-0.5 rounded-full">
+                            {cards.length}
+                          </span>
+                        </div>
+                        <div className="px-2 pb-3 space-y-2 min-h-[120px]">
+                          {cards.length === 0 ? (
+                            <p className="text-xs text-gray-400 text-center py-6">Empty</p>
+                          ) : (
+                            cards.map((app) => (
+                              <CandidateCard
+                                key={app.id}
+                                app={app}
+                                selected={selected.has(app.id)}
+                                onSelect={toggleSelect}
+                                onAction={handleAction}
+                              />
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
         )}
       </div>
