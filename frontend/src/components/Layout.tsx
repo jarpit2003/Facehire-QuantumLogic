@@ -2,7 +2,7 @@ import { type ReactNode, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sparkles, Users, Briefcase, Calendar, LayoutDashboard,
-  ChevronDown, Loader2, LogOut, ChevronRight, Menu, X,
+  ChevronDown, Loader2, LogOut, ChevronRight, Menu, X, Kanban,
 } from "lucide-react";
 import { useJobs } from "../context/JobContext";
 import { useAuth } from "../context/AuthContext";
@@ -12,6 +12,7 @@ interface LayoutProps { children: ReactNode; }
 const NAV_ITEMS = [
   { path: "/dashboard",  icon: LayoutDashboard, label: "Dashboard",   desc: "Overview & activity"     },
   { path: "/jobs",       icon: Briefcase,       label: "Jobs",        desc: "Post & manage roles"     },
+  { path: "/pipeline",   icon: Kanban,          label: "Pipeline",    desc: "Kanban hiring board"     },
   { path: "/candidates", icon: Users,           label: "Candidates",  desc: "Screen & move pipeline"  },
   { path: "/interviews", icon: Calendar,        label: "Interviews",  desc: "Scheduled sessions"      },
 ];
