@@ -97,7 +97,7 @@ export default function Candidates() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in-up">
       {/* Header */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -125,7 +125,7 @@ export default function Candidates() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Candidate</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stage</th>
@@ -140,7 +140,7 @@ export default function Candidates() {
               {sorted.map((app, i) => {
                 const finalScore = app.final_score ?? app.resume_score;
                 return (
-                  <tr key={app.id} className={i % 2 === 1 ? "bg-slate-50/60" : "bg-white"}>
+                  <tr key={app.id} className={`hover:bg-blue-50/30 transition-colors ${i % 2 === 1 ? "bg-slate-50/60" : "bg-white"}`}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3 min-w-0">
                         <UserCircle className="h-8 w-8 text-gray-300 flex-shrink-0" />

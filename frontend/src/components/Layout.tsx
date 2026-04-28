@@ -2,7 +2,7 @@ import { type ReactNode, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sparkles, Users, Briefcase, Calendar, LayoutDashboard,
-  ChevronDown, Loader2, LogOut, ChevronRight, Menu, X, Kanban,
+  ChevronDown, Loader2, LogOut, ChevronRight, Menu, X, Kanban, UserCog,
 } from "lucide-react";
 import { useJobs } from "../context/JobContext";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { path: "/pipeline",   icon: Kanban,          label: "Pipeline",    desc: "Kanban hiring board"     },
   { path: "/candidates", icon: Users,           label: "Candidates",  desc: "Screen & move pipeline"  },
   { path: "/interviews", icon: Calendar,        label: "Interviews",  desc: "Scheduled sessions"      },
+  { path: "/hr-users",   icon: UserCog,         label: "HR Users",    desc: "Team & interviewers"     },
 ];
 
 function JobSwitcher({ collapsed }: { collapsed: boolean }) {
@@ -232,7 +233,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <main className="flex-1 p-6 lg:p-8 mt-14 lg:mt-0 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 mt-14 lg:mt-0 max-w-7xl w-full mx-auto animate-fade-in-up">
           {children}
         </main>
       </div>

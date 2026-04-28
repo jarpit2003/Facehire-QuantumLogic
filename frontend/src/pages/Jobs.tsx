@@ -228,7 +228,7 @@ export default function Jobs() {
   };
 
   return (
-    <div className="px-4 sm:px-0 space-y-8 max-w-4xl mx-auto">
+    <div className="px-4 sm:px-0 space-y-8 max-w-4xl mx-auto animate-fade-in-up">
       <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6 sm:p-8">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-4">
@@ -330,7 +330,7 @@ export default function Jobs() {
               const isPublishing = publishingJobId === job.id;
 
               return (
-                <li key={job.id} className={`px-6 py-5 ${isActive ? "bg-blue-50/60" : "hover:bg-slate-50"}`}>
+                <li key={job.id} className={`px-6 py-5 transition-colors ${isActive ? "bg-blue-50/60" : "hover:bg-slate-50/80"}`}>
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3 min-w-0">
                       {isActive ? (

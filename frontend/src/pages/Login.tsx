@@ -55,7 +55,10 @@ export default function Login() {
   return (
     <div className="min-h-screen flex">
       {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 flex-col justify-between p-12 text-white">
+      <div className="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 flex-col justify-between p-12 text-white relative overflow-hidden">
+        {/* Decorative circles */}
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/5" />
+        <div className="absolute bottom-12 -left-16 h-48 w-48 rounded-full bg-white/5" />
         <div>
           <div className="flex items-center gap-3 mb-16">
             <div className="bg-white/20 rounded-xl p-2">
@@ -80,15 +83,17 @@ export default function Login() {
             ))}
           </div>
         </div>
-        <p className="text-blue-200 text-xs">© {new Date().getFullYear()} FairHire AI. Built for modern HR teams.</p>
+        <p className="text-blue-200 text-xs relative z-10">© {new Date().getFullYear()} FairHire AI. Built for modern HR teams.</p>
       </div>
 
       {/* Right panel — form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-slate-50">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md animate-fade-in-up">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <Sparkles className="h-7 w-7 text-blue-600" />
+            <div className="bg-blue-600 rounded-xl p-1.5">
+              <Sparkles className="h-5 w-5 text-white" />
+            </div>
             <span className="text-xl font-bold text-gray-900">FairHire AI</span>
           </div>
 
@@ -122,7 +127,7 @@ export default function Login() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {mode === "register" && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full name</label>

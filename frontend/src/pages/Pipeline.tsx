@@ -722,7 +722,7 @@ export default function Pipeline() {
 
   return (
     <Layout>
-      <div className="px-4 sm:px-0 space-y-4">
+      <div className="px-4 sm:px-0 space-y-4 animate-fade-in-up">
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
@@ -766,13 +766,18 @@ export default function Pipeline() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Name or email…"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-colors"
             />
           </div>
           <div className="flex-1 min-w-[180px]">
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-gray-500">Min score</label>
-              <span className="text-xs font-bold text-gray-700">{scoreFilter}%</span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                scoreFilter >= 80 ? "bg-green-100 text-green-700" :
+                scoreFilter >= 60 ? "bg-blue-100 text-blue-700" :
+                scoreFilter >= 40 ? "bg-amber-100 text-amber-700" :
+                "bg-gray-100 text-gray-600"
+              }`}>{scoreFilter}%</span>
             </div>
             <input
               type="range"
@@ -780,7 +785,7 @@ export default function Pipeline() {
               max={100}
               value={scoreFilter}
               onChange={(e) => setScoreFilter(Number(e.target.value))}
-              className="w-full"
+              className="w-full accent-blue-600"
             />
           </div>
         </div>

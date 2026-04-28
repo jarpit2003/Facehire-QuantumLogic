@@ -68,13 +68,15 @@ interface SavedResult {
 // Step indicator
 // ---------------------------------------------------------------------------
 
-function StepBadge({ n, label, active }: { n: number; label: string; active: boolean }) {
+function StepBadge({ n, label, active, done }: { n: number; label: string; active: boolean; done?: boolean }) {
   return (
-    <div className={`flex items-center gap-2 ${active ? "opacity-100" : "opacity-40"}`}>
-      <span className={`h-6 w-6 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0 ${
-        active ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
-      }`}>{n}</span>
-      <span className={`text-sm font-semibold ${active ? "text-gray-900" : "text-gray-400"}`}>{label}</span>
+    <div className={`flex items-center gap-2 transition-opacity ${active || done ? "opacity-100" : "opacity-35"}`}>
+      <span className={`h-6 w-6 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0 transition-colors ${
+        done ? "bg-green-500 text-white" : active ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-500"
+      }`}>{done ? "✓" : n}</span>
+      <span className={`text-sm font-semibold transition-colors ${
+        done ? "text-green-700" : active ? "text-gray-900" : "text-gray-400"
+      }`}>{label}</span>
     </div>
   );
 }
@@ -386,7 +388,7 @@ export default function ProcessResumes() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 sm:px-0 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-0 space-y-6 animate-fade-in-up">
 
         {/* Header */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
@@ -409,9 +411,9 @@ export default function ProcessResumes() {
 
           {/* Step indicators */}
           <div className="mt-5 flex items-center gap-3 flex-wrap">
-            <StepBadge n={1} label="Upload Files" active={!isPreviewStep && !done} />
+            <StepBadge n={1} label="Upload Files" active={!isPreviewStep && !done} done={isPreviewStep || done} />
             <ChevronRight className="h-4 w-4 text-gray-300" />
-            <StepBadge n={2} label="Review Profile" active={isPreviewStep} />
+            <StepBadge n={2} label="Review Profile" active={isPreviewStep} done={done} />
             <ChevronRight className="h-4 w-4 text-gray-300" />
             <StepBadge n={3} label="Saved to Pipeline" active={done} />
           </div>

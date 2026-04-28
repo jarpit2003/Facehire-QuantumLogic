@@ -128,7 +128,7 @@ export default function Interviews() {
 
   return (
     <Layout>
-      <div className="px-4 sm:px-0 space-y-6">
+      <div className="px-4 sm:px-0 space-y-6 animate-fade-in-up">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -216,7 +216,7 @@ export default function Interviews() {
 function InterviewRow({ iv, onScore }: { iv: InterviewRecord; onScore: () => void }) {
   const date = iv.scheduled_at ? new Date(iv.scheduled_at).toLocaleString() : "—";
   return (
-    <li className="px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+    <li className="px-6 py-4 flex items-center justify-between gap-4 flex-wrap hover:bg-slate-50/60 transition-colors">
       <div className="flex items-center gap-3 min-w-0">
         <UserCircle className="h-9 w-9 text-gray-300 flex-shrink-0" />
         <div className="min-w-0">

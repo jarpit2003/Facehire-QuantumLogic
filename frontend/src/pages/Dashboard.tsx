@@ -89,10 +89,10 @@ function OnboardingStepper({ hasJob, hasCandidates, hasInterview }: {
 
 function MetricCard({ label, value, sub, icon, color }: { label: string; value: number | string; sub?: string; icon: React.ReactNode; color: string; }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-card-hover transition-shadow">
       <div className={`rounded-xl p-3 flex-shrink-0 ${color}`}>{icon}</div>
       <div>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <p className="text-2xl font-bold text-gray-900 tabular-nums">{value}</p>
         <p className="text-xs font-medium text-gray-500 mt-0.5">{label}</p>
         {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
@@ -190,7 +190,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in-up">
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>

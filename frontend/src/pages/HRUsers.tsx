@@ -51,7 +51,7 @@ export default function HRUsers() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto space-y-6 px-4 sm:px-0">
+      <div className="max-w-3xl mx-auto space-y-6 px-4 sm:px-0 animate-fade-in-up">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4">
@@ -88,7 +88,7 @@ export default function HRUsers() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <ul className="divide-y divide-gray-100">
               {users.map((u) => (
-                <li key={u.id} className={`px-6 py-4 flex items-center gap-4 ${u.id === user?.user_id ? "bg-blue-50/40" : ""}`}>
+                <li key={u.id} className={`px-6 py-4 flex items-center gap-4 transition-colors hover:bg-slate-50/60 ${u.id === user?.user_id ? "bg-blue-50/40" : ""}`}>
                   <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-bold text-white">
                       {u.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
